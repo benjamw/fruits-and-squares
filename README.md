@@ -2,7 +2,7 @@
 
 A collection of randomly generated fruit puzzle games, available at [fruitsandsquares.com](https://fruitsandsquares.com/). Users can sign in via LinkedIn to compare scores on the top games or play endless games without an account.
 
-[Mango](https://fruitsandsquares.com/mango/new) is a 6x6 grid filled with bananas and mangos, following a similar ruleset to LinkedIn's [Tango](https://www.linkedin.com/showcase/tango-game/), except there may be more than one valid solution.
+[Mango](https://fruitsandsquares.com/mango/new) is a 6x6 grid filled with bananas and mangoes, following a similar ruleset to LinkedIn's [Tango](https://www.linkedin.com/showcase/tango-game/), except there may be more than one valid solution.
 
 [Beans](https://fruitsandsquares.com/beans/new) is a 10x10 grid, divided in 10 areas, following a similar ruleset to LinkedIn's [Queens](https://www.linkedin.com/showcase/queens-game/), except there may be more than one valid solution.
 
@@ -26,7 +26,7 @@ Finally, the fruits in any cells that aren't fixed are removed and the game boar
 
 ### Beans generation logic
 
-First we consider only the contraints on bean positioning to generate a valid arrangement:
+First we consider only the constraints on bean positioning to generate a valid arrangement:
 only one bean per row and column and no beans within the eight squares surrounding any other beans.
 
 To fill the board, we iterate through each row, and randomly select a column to place the bean. If this column is not valid, we retry up to 10 times. If no valid column can be found, we retry board generation up to 1,000 times.
@@ -57,7 +57,7 @@ If you wish to make your own full version of this you will need to create a new 
 
 ## LinkedIn authentication for Firebase
 
-Users can sign into their LinkedIn using OpenID Connect. Documentation for how this works is available [here](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2).
+Users can sign in to their LinkedIn using OpenID Connect. Documentation for how this works is available [here](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2).
 
 Once authenticated via LinkedIn, an account is created from the user's details and a custom token is returned to the client. Documentation [here](https://firebase.google.com/docs/auth/admin/create-custom-tokens).
 
