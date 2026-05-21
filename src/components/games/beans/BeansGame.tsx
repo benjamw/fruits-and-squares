@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createEmptyBeansBoard, validateBoard } from "./beansUtils";
 import { BeansBoard, GameState, GameScore } from "@utils/types";
 import refreshIcon from "@assets/refresh.svg";
@@ -24,6 +24,8 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
   const [playableBoard, setPlayableBoard] = useState<BeansBoard>(createEmptyBeansBoard());
   const [initialBoard, setInitialBoard] = useState<BeansBoard>(createEmptyBeansBoard());
   const [alertState, setAlertState] = useState({ valid: true, message: "" });
+  const isDraggingRef = useRef(false);
+  const visitedRef = useRef<Set<string>>(new Set());
 
   const resetBoard = useCallback(() => {
     setPlayableBoard(JSON.parse(JSON.stringify(initialBoard)));
@@ -40,12 +42,19 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
     } 
   }, [board]);
   
-  const handleCellClick = (rowIndex: number, colIndex: number) => {
-    // Create a copy of the board to modify the clicked cell
+  const applyBoardUpdate = (newBoard: BeansBoard) => {
+    const { valid, message, completed } = validateBoard(newBoard);
+    setAlertState({ valid, message });
+    if (completed) {
+      puzzleComplete();
+    }
+    setPlayableBoard(newBoard);
+  };
+
+  const cycleCell = (rowIndex: number, colIndex: number) => {
     const newBoard = [...playableBoard];
     const clickedCell = newBoard[rowIndex][colIndex];
 
-    // Update the cell based on the current state
     if (!clickedCell.hasCross && !clickedCell.hasBean) {
       clickedCell.hasCross = true;
     } else if (clickedCell.hasCross && !clickedCell.hasBean) {
@@ -55,16 +64,60 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
       clickedCell.hasBean = false;
     }
 
-    const { valid, message, completed } = validateBoard(newBoard);
-    setAlertState({ valid, message });
-
-    if (completed) {
-      puzzleComplete();
-    }
-
-    // Set the new board state
-    setPlayableBoard(newBoard);
+    applyBoardUpdate(newBoard);
   };
+
+  const addCrossIfEmpty = (rowIndex: number, colIndex: number) => {
+    const cell = playableBoard[rowIndex][colIndex];
+    if (cell.hasCross || cell.hasBean) return;
+
+    const newBoard = [...playableBoard];
+    newBoard[rowIndex][colIndex].hasCross = true;
+    applyBoardUpdate(newBoard);
+  };
+
+  const getCellCoords = (target: EventTarget | null): [number, number] | null => {
+    if (!(target instanceof Element)) return null;
+    const cellEl = target.closest("[data-row][data-col]");
+    if (!cellEl) return null;
+    const row = Number(cellEl.getAttribute("data-row"));
+    const col = Number(cellEl.getAttribute("data-col"));
+    if (Number.isNaN(row) || Number.isNaN(col)) return null;
+    return [row, col];
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const coords = getCellCoords(e.target);
+    if (!coords) return;
+    const [row, col] = coords;
+    isDraggingRef.current = true;
+    visitedRef.current = new Set([`${row}-${col}`]);
+    cycleCell(row, col);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const coords = getCellCoords(el);
+    if (!coords) return;
+    const key = `${coords[0]}-${coords[1]}`;
+    if (visitedRef.current.has(key)) return;
+    visitedRef.current.add(key);
+    addCrossIfEmpty(coords[0], coords[1]);
+  };
+
+  useEffect(() => {
+    const endDrag = () => {
+      isDraggingRef.current = false;
+      visitedRef.current.clear();
+    };
+    window.addEventListener("pointerup", endDrag);
+    window.addEventListener("pointercancel", endDrag);
+    return () => {
+      window.removeEventListener("pointerup", endDrag);
+      window.removeEventListener("pointercancel", endDrag);
+    };
+  }, []);
 
   return (
     <div className="game-container">
@@ -83,11 +136,16 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
           {formatTimer(gameState.timer)}
         </div>
       </div>
-      <div className="game-board bean">
+      <div
+        className="game-board bean"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        style={{ touchAction: "none" }}
+      >
         <GameOverlay players={players} type="beans" gameState={gameState} startPuzzle={startPuzzle}/>
         {playableBoard.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
-            <BeansSquare key={`${rowIndex}-${colIndex}`} cell={cell} rowIndex={rowIndex} colIndex={colIndex} handleCellClick={handleCellClick} />
+            <BeansSquare key={`${rowIndex}-${colIndex}`} cell={cell} rowIndex={rowIndex} colIndex={colIndex} />
           ))
         )}
       </div>

@@ -6,16 +6,16 @@ interface BeansSquareProps {
   cell: BeansCell;
   rowIndex: number;
   colIndex: number;
-  handleCellClick: (rowIndex: number, colIndex: number) => void;
 }
 
 
-const BeansSquare = ({ cell, rowIndex, colIndex, handleCellClick }: BeansSquareProps) => {
+const BeansSquare = ({ cell, rowIndex, colIndex }: BeansSquareProps) => {
 
   return (
     <div
       key={`${rowIndex}-${colIndex}`}
-      onClick={() => handleCellClick(rowIndex, colIndex)}
+      data-row={rowIndex}
+      data-col={colIndex}
       className="game-cell bean"
       style={{
         backgroundColor: cell.color || "#000",
