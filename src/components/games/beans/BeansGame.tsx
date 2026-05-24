@@ -26,6 +26,9 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
   const [alertState, setAlertState] = useState({ valid: true, message: "" });
   const isDraggingRef = useRef(false);
   const visitedRef = useRef<Set<string>>(new Set());
+  const dragModeRef = useRef<"add" | "remove">("add");
+  const hasMovedRef = useRef(false);
+  const initialCellRef = useRef<[number, number] | null>(null);
 
   const resetBoard = useCallback(() => {
     setPlayableBoard(JSON.parse(JSON.stringify(initialBoard)));
@@ -76,6 +79,22 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
     applyBoardUpdate(newBoard);
   };
 
+  const removeCrossIfPresent = (rowIndex: number, colIndex: number) => {
+    const cell = playableBoard[rowIndex][colIndex];
+    if (!cell.hasCross || cell.hasBean) return;
+
+    const newBoard = [...playableBoard];
+    newBoard[rowIndex][colIndex].hasCross = false;
+    applyBoardUpdate(newBoard);
+  };
+
+  const clearCell = (rowIndex: number, colIndex: number) => {
+    const newBoard = [...playableBoard];
+    newBoard[rowIndex][colIndex].hasCross = false;
+    newBoard[rowIndex][colIndex].hasBean = false;
+    applyBoardUpdate(newBoard);
+  };
+
   const getCellCoords = (target: EventTarget | null): [number, number] | null => {
     if (!(target instanceof Element)) return null;
     const cellEl = target.closest("[data-row][data-col]");
@@ -83,6 +102,7 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
     const row = Number(cellEl.getAttribute("data-row"));
     const col = Number(cellEl.getAttribute("data-col"));
     if (Number.isNaN(row) || Number.isNaN(col)) return null;
+
     return [row, col];
   };
 
@@ -90,29 +110,62 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
     const coords = getCellCoords(e.target);
     if (!coords) return;
     const [row, col] = coords;
+    const cell = playableBoard[row][col];
+    
+    // Determine drag mode based on initial cell state
+    dragModeRef.current = cell.hasCross ? "remove" : "add";
+    
     isDraggingRef.current = true;
+    hasMovedRef.current = false;
+    initialCellRef.current = [row, col];
     visitedRef.current = new Set([`${row}-${col}`]);
-    cycleCell(row, col);
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current) return;
+    
+    // On first movement, apply drag action to initial cell
+    if (!hasMovedRef.current && initialCellRef.current) {
+      const [row, col] = initialCellRef.current;
+      if (dragModeRef.current === "add") {
+        addCrossIfEmpty(row, col);
+      } else {
+        clearCell(row, col);
+      }
+      hasMovedRef.current = true;
+    }
+    
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const coords = getCellCoords(el);
     if (!coords) return;
     const key = `${coords[0]}-${coords[1]}`;
     if (visitedRef.current.has(key)) return;
+    
     visitedRef.current.add(key);
-    addCrossIfEmpty(coords[0], coords[1]);
+    
+    if (dragModeRef.current === "add") {
+      addCrossIfEmpty(coords[0], coords[1]);
+    } else {
+      removeCrossIfPresent(coords[0], coords[1]);
+    }
   };
 
   useEffect(() => {
     const endDrag = () => {
+      // If pointer didn't move, treat as a click and cycle the cell
+      if (isDraggingRef.current && !hasMovedRef.current && initialCellRef.current) {
+        const [row, col] = initialCellRef.current;
+        cycleCell(row, col);
+      }
+      
       isDraggingRef.current = false;
+      hasMovedRef.current = false;
+      initialCellRef.current = null;
       visitedRef.current.clear();
     };
     window.addEventListener("pointerup", endDrag);
     window.addEventListener("pointercancel", endDrag);
+    
     return () => {
       window.removeEventListener("pointerup", endDrag);
       window.removeEventListener("pointercancel", endDrag);
