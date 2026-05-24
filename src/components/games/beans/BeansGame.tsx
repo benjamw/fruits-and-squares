@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { createEmptyBeansBoard, validateBoard } from "./beansUtils";
+import { createEmptyBeansBoard, validateBoard, getCellsBetween } from "./beansUtils";
 import { BeansBoard, GameState, GameScore } from "@utils/types";
 import refreshIcon from "@assets/refresh.svg";
 import forwardsIcon from "@assets/skip-forward.svg";
@@ -29,6 +29,7 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
   const dragModeRef = useRef<"add" | "remove">("add");
   const hasMovedRef = useRef(false);
   const initialCellRef = useRef<[number, number] | null>(null);
+  const lastPositionRef = useRef<[number, number] | null>(null);
 
   const resetBoard = useCallback(() => {
     setPlayableBoard(JSON.parse(JSON.stringify(initialBoard)));
@@ -118,6 +119,7 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
     isDraggingRef.current = true;
     hasMovedRef.current = false;
     initialCellRef.current = [row, col];
+    lastPositionRef.current = [row, col];
     visitedRef.current = new Set([`${row}-${col}`]);
   };
 
@@ -127,26 +129,36 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const coords = getCellCoords(el);
     if (!coords) return;
-    const key = `${coords[0]}-${coords[1]}`;
-    if (visitedRef.current.has(key)) return;
     
-    // Mark as moved only when entering a NEW cell (not the initial one)
-    if (!hasMovedRef.current && initialCellRef.current) {
-      const [row, col] = initialCellRef.current;
+    // Get all cells between last position and current position
+    const cellsToProcess = lastPositionRef.current 
+      ? getCellsBetween(lastPositionRef.current, coords)
+      : [coords];
+    
+    lastPositionRef.current = coords;
+    
+    for (const [row, col] of cellsToProcess) {
+      const key = `${row}-${col}`;
+      if (visitedRef.current.has(key)) continue;
+      
+      // Mark as moved only when entering a NEW cell (not the initial one)
+      if (!hasMovedRef.current && initialCellRef.current) {
+        const [initRow, initCol] = initialCellRef.current;
+        if (dragModeRef.current === "add") {
+          addCrossIfEmpty(initRow, initCol);
+        } else {
+          clearCell(initRow, initCol);
+        }
+        hasMovedRef.current = true;
+      }
+      
+      visitedRef.current.add(key);
+      
       if (dragModeRef.current === "add") {
         addCrossIfEmpty(row, col);
       } else {
-        clearCell(row, col);
+        removeCrossIfPresent(row, col);
       }
-      hasMovedRef.current = true;
-    }
-    
-    visitedRef.current.add(key);
-    
-    if (dragModeRef.current === "add") {
-      addCrossIfEmpty(coords[0], coords[1]);
-    } else {
-      removeCrossIfPresent(coords[0], coords[1]);
     }
   };
 
@@ -161,6 +173,7 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
       isDraggingRef.current = false;
       hasMovedRef.current = false;
       initialCellRef.current = null;
+      lastPositionRef.current = null;
       visitedRef.current.clear();
     };
     window.addEventListener("pointerup", endDrag);

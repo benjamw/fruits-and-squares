@@ -27,6 +27,27 @@ const gridDirections = [
   [0, -1], [0, 1], // Left, Right
 ];
 
+export const getCellsBetween = (from: [number, number], to: [number, number]): [number, number][] => {
+  const cells: [number, number][] = [];
+  const [x0, y0] = from;
+  const [x1, y1] = to;
+  
+  // Calculate steps needed to interpolate between points
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const steps = Math.max(dx, dy);
+  
+  // Interpolate all cells along the path
+  for (let i = 0; i <= steps; i++) {
+    const t = steps === 0 ? 0 : i / steps;
+    const x = Math.round(x0 + (x1 - x0) * t);
+    const y = Math.round(y0 + (y1 - y0) * t);
+    cells.push([x, y]);
+  }
+  
+  return cells;
+};
+
 export const getColorName = (color: string) => {
   const foundColor = colors.find((c) => c.color === color);
   
