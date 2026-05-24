@@ -124,7 +124,13 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isDraggingRef.current) return;
     
-    // On first movement, apply drag action to initial cell
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const coords = getCellCoords(el);
+    if (!coords) return;
+    const key = `${coords[0]}-${coords[1]}`;
+    if (visitedRef.current.has(key)) return;
+    
+    // Mark as moved only when entering a NEW cell (not the initial one)
     if (!hasMovedRef.current && initialCellRef.current) {
       const [row, col] = initialCellRef.current;
       if (dragModeRef.current === "add") {
@@ -134,12 +140,6 @@ const BeansGame = ({ board, index, players, gameState, puzzleComplete, startPuzz
       }
       hasMovedRef.current = true;
     }
-    
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    const coords = getCellCoords(el);
-    if (!coords) return;
-    const key = `${coords[0]}-${coords[1]}`;
-    if (visitedRef.current.has(key)) return;
     
     visitedRef.current.add(key);
     
