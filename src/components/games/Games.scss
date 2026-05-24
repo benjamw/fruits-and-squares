@@ -112,6 +112,7 @@ $grid-size: var(--grid-size, 240px);
         color: #000;
         user-select: none;
         -webkit-tap-highlight-color: transparent;
+        pointer-events: none;
         z-index: 2;
       }
 
